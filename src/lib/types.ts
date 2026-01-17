@@ -1,3 +1,4 @@
+// updated Settings interface with new fields
 export interface Participant {
   id: string;
   name: string;
@@ -28,4 +29,11 @@ export interface Settings {
   welcomeSubtitle: string;
   prizePageTitle: string;  // 奖项页标题
   logo?: string;  // 公司 logo (base64)
+
+  // 新增设置
+  bgImage?: string; // 自定义背景（base64 或 URL）
+  bgOverlayOpacity?: number; // 遮罩透明度，0 ~ 1（默认 0.6）
+  winAnimation?: 'none' | 'scale' | 'flash' | 'confetti'; // 中奖展示动画效果
+  welcomeFontSize?: number; // 欢迎页主标题字体大小（px）
+  lotteryFontSize?: number; // 抽奖页主标题字体大小（px）
 }
