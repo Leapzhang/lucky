@@ -157,6 +157,122 @@ export default function AdminPage() {
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
 
+  const handleExportWinnersImage = () => {
+    if (winners.length === 0) {
+      toast.error("暂无中奖记录");
+      return;
+    }
+
+    const prizeNameMap = new Map(prizes.map(p => [p.id, p.name]));
+    const sortedWinners = [...winners].sort((a, b) => a.wonAt - b.wonAt);
+    const maxRows = 60;
+    const truncated = sortedWinners.length > maxRows;
+    const rows = sortedWinners.slice(0, maxRows);
+
+    const width = 1080;
+    const rowHeight = 48;
+    const headerHeight = 260;
+    const footerHeight = 80;
+    const tableHeaderHeight = 56;
+    const extraNoteHeight = truncated ? 32 : 0;
+    const height = Math.min(4000, headerHeight + tableHeaderHeight + rows.length * rowHeight + extraNoteHeight + footerHeight);
+
+    const canvas = document.createElement("canvas");
+    const scale = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = width * scale;
+    canvas.height = height * scale;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(scale, scale);
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, "#0b0b0f");
+    gradient.addColorStop(1, "#1a0f0a");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "rgba(255, 215, 0, 0.08)";
+    for (let i = 0; i < 80; i++) {
+      const x = (i * 137) % width;
+      const y = (i * 83) % height;
+      ctx.beginPath();
+      ctx.arc(x, y, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = "#f5d76e";
+    ctx.font = "700 44px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.textAlign = "left";
+    ctx.fillText(settings.title || "Lucky Draw", 64, 88);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "700 56px system-ui, -apple-system, Segoe UI, sans-serif";
+    ctx.fillText("中奖记录", 64, 150);
+
+    ctx.fillStyle = "rgba(255,255,255,0.7)";
+    ctx.font = "16px system-ui, -apple-system, Segoe UI, sans-serif";
+    const nowText = new Date().toLocaleString();
+    ctx.fillText(`导出时间：${nowText}`, 64, 190);
+    ctx.fillText(`记录总数：${winners.length}`, 64, 216);
+
+    const tableTop = headerHeight;
+    ctx.fillStyle = "rgba(255, 215, 0, 0.12)";
+    ctx.fillRect(48, tableTop, width - 96, tableHeaderHeight);
+
+    ctx.fillStyle = "#f5d76e";
+    ctx.font = "600 18px system-ui, -apple-system, Segoe UI, sans-serif";
+    const colXs = {
+      idx: 72,
+      name: 150,
+      dept: 360,
+      prize: 640,
+      time: 820,
+    };
+    ctx.fillText("序号", colXs.idx, tableTop + 34);
+    ctx.fillText("姓名", colXs.name, tableTop + 34);
+    ctx.fillText("部门", colXs.dept, tableTop + 34);
+    ctx.fillText("奖项", colXs.prize, tableTop + 34);
+    ctx.fillText("时间", colXs.time, tableTop + 34);
+
+    ctx.font = "16px system-ui, -apple-system, Segoe UI, sans-serif";
+    rows.forEach((w, i) => {
+      const y = tableTop + tableHeaderHeight + i * rowHeight;
+      ctx.fillStyle = i % 2 === 0 ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.02)";
+      ctx.fillRect(48, y, width - 96, rowHeight);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(String(i + 1), colXs.idx, y + 30);
+      ctx.fillText(w.name, colXs.name, y + 30);
+      ctx.fillStyle = "rgba(255,255,255,0.8)";
+      ctx.fillText(w.dept || "-", colXs.dept, y + 30);
+      ctx.fillStyle = "#f5d76e";
+      ctx.fillText(prizeNameMap.get(w.prizeId) || "-", colXs.prize, y + 30);
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.fillText(new Date(w.wonAt).toLocaleString(), colXs.time, y + 30);
+    });
+
+    let footerTop = tableTop + tableHeaderHeight + rows.length * rowHeight;
+    if (truncated) {
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      ctx.fillText(`仅导出前 ${maxRows} 条记录`, 64, footerTop + 22);
+      footerTop += extraNoteHeight;
+    }
+
+    ctx.strokeStyle = "rgba(255,215,0,0.25)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(48, tableTop, width - 96, footerTop - tableTop);
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `winners-${new Date().toISOString().slice(0, 10)}.png`;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+  };
+
   const openAddDialog = () => {
     setEditingPerson(null);
     setEditForm({ name: "", dept: "", mustWinPrizeId: "none", banned: false, weight: 1 });
@@ -613,7 +729,10 @@ export default function AdminPage() {
             <TabsContent value="winners" className="mt-0 p-4 overflow-auto">
                <div className="flex justify-between mb-4">
                  <h3 className="font-bold text-lg">历史中奖记录</h3>
-                 <Button variant="outline" size="sm" onClick={() => { if(confirm("清空历史记录？")) resetWinners(); }}>重置记录</Button>
+                 <div className="flex gap-2">
+                   <Button variant="outline" size="sm" onClick={handleExportWinnersImage}>导出图片</Button>
+                   <Button variant="outline" size="sm" onClick={() => { if(confirm("清空历史记录？")) resetWinners(); }}>重置记录</Button>
+                 </div>
                </div>
                <Table>
                  <TableHeader><TableRow><TableHead>姓名</TableHead><TableHead>部门</TableHead><TableHead>奖项</TableHead><TableHead>时间</TableHead></TableRow></TableHeader>
