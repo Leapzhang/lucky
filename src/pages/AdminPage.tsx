@@ -304,7 +304,7 @@ export default function AdminPage() {
       <header className="border-b px-6 py-3 flex items-center justify-between bg-card">
         <div className="flex items-center gap-2 font-bold text-lg">
           <ShieldAlert className="w-5 h-5 text-primary"/>
-          {settings.title} - 控制台
+          {settings.title}
         </div>
         <div className="flex items-center gap-4">
 
